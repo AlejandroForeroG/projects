@@ -3,6 +3,7 @@ import PhoneFrame from './shared/PhoneFrame';
 import { useAlarmState } from './shared/useAlarmState';
 import mobileRegistry, { versionMeta } from './mobile/registry';
 import webRegistry, { webVersionMeta } from './web/registry';
+import ComponentCatalog from './components/ComponentCatalog';
 
 function LoadingFallback({ isWeb }) {
   return (
@@ -69,8 +70,45 @@ function PlatformSelector({ platform, onPlatformChange }) {
   );
 }
 
+function ViewSelector({ view, onViewChange }) {
+  return (
+    <div style={{
+      display: 'flex',
+      background: '#F0F3F6',
+      borderRadius: '100px',
+      padding: '4px',
+      border: '2px solid #1A2B3C',
+      boxShadow: '3px 3px 0px #1A2B3C',
+    }}>
+      {['flows', 'components'].map((v) => (
+        <button
+          key={v}
+          onClick={() => onViewChange(v)}
+          style={{
+            padding: '8px 24px',
+            borderRadius: '100px',
+            border: 'none',
+            background: view === v ? '#1A2B3C' : 'transparent',
+            color: view === v ? '#FFFFFF' : '#5A6E7F',
+            fontSize: '13px',
+            fontWeight: 700,
+            fontFamily: "'Sora', system-ui, sans-serif",
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            textTransform: 'capitalize',
+            letterSpacing: '0.03em',
+          }}
+        >
+          {v === 'flows' ? 'Flujos' : 'Componentes'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [platform, setPlatform] = useState('mobile');
+  const [view, setView] = useState('flows');
   const state = useAlarmState();
 
   // Mobile always shows v5 only, Web always shows v1 only
@@ -92,14 +130,19 @@ export default function App() {
         justifyContent: 'center',
         gap: '24px',
         paddingTop: '28px',
-        paddingBottom: platform === 'web' ? '20px' : '0px',
+        paddingBottom: view === 'components' ? '20px' : (platform === 'web' ? '20px' : '0px'),
         flexWrap: 'wrap',
       }}>
+        <ViewSelector view={view} onViewChange={setView} />
         <PlatformSelector platform={platform} onPlatformChange={setPlatform} />
       </div>
 
-      {/* ─── Mobile mode ─── */}
-      {platform === 'mobile' && (
+      {view === 'components' && (
+        <ComponentCatalog />
+      )}
+
+      {/* ─── Flows: Mobile mode ─── */}
+      {view === 'flows' && platform === 'mobile' && (
         <>
           <PhoneFrame
             version={5}
@@ -137,8 +180,8 @@ export default function App() {
         </>
       )}
 
-      {/* ─── Web mode ─── */}
-      {platform === 'web' && (
+      {/* ─── Flows: Web mode ─── */}
+      {view === 'flows' && platform === 'web' && (
         <div style={{
           width: '100%',
           maxWidth: '1280px',

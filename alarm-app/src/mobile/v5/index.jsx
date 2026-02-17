@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import theme from './theme';
 import { SCREENS, RINGTONES, ALARM_ACTIONS, PRIORITIES, ALARM_COLORS, GOOD_MORNING_ACTIONS } from '../../shared/useAlarmState';
@@ -20,6 +20,93 @@ const popIn = {
 };
 
 const PROGRESSIVE_OPTIONS = [3, 5, 10, 15, 20, 30];
+const WIREFRAME_CLASS = 'mobile-v5-wireframe-mode';
+const WIREFRAME_CSS = `
+  .${WIREFRAME_CLASS},
+  .${WIREFRAME_CLASS} * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
+  }
+
+  .${WIREFRAME_CLASS} * {
+    color: #3f3f3f !important;
+    border-color: #969696 !important;
+  }
+
+  .${WIREFRAME_CLASS} div,
+  .${WIREFRAME_CLASS} section,
+  .${WIREFRAME_CLASS} article,
+  .${WIREFRAME_CLASS} aside,
+  .${WIREFRAME_CLASS} nav,
+  .${WIREFRAME_CLASS} header,
+  .${WIREFRAME_CLASS} footer,
+  .${WIREFRAME_CLASS} main {
+    background-color: #f5f5f5 !important;
+  }
+
+  .${WIREFRAME_CLASS} button,
+  .${WIREFRAME_CLASS} input,
+  .${WIREFRAME_CLASS} textarea,
+  .${WIREFRAME_CLASS} select,
+  .${WIREFRAME_CLASS} [role='button'],
+  .${WIREFRAME_CLASS} [role='switch'] {
+    background: #ececec !important;
+  }
+
+  .${WIREFRAME_CLASS} img,
+  .${WIREFRAME_CLASS} svg {
+    filter: grayscale(1) !important;
+  }
+`;
+const WIREFRAME_ICON_REGEX = /[\p{Extended_Pictographic}\u2600-\u27BF\uFE0E\uFE0F]/gu;
+
+function sanitizeWireframeText(value) {
+  return value.replace(WIREFRAME_ICON_REGEX, '').replace(/\s{2,}/g, ' ');
+}
+
+function VisualModeSwitch({ isWireframe, onModeChange }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      zIndex: 3000,
+      display: 'flex',
+      background: '#f0f0f0',
+      border: '2px solid #7f7f7f',
+      borderRadius: '999px',
+      padding: '3px',
+      gap: '4px',
+      fontFamily: t.fonts.display,
+    }}>
+      {[
+        { id: 'visual', label: 'Visual' },
+        { id: 'wireframe', label: 'Wireframe' },
+      ].map((mode) => {
+        const active = (mode.id === 'wireframe') === isWireframe;
+        return (
+          <button
+            key={mode.id}
+            onClick={() => onModeChange(mode.id === 'wireframe')}
+            style={{
+              border: '1px solid #8c8c8c',
+              borderRadius: '999px',
+              background: active ? '#d8d8d8' : '#f8f8f8',
+              color: '#333',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '5px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            {mode.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /* ───────── Shared Components ───────── */
 
@@ -2693,6 +2780,9 @@ function GoodMorningSettingsScreen({ state }) {
 export default function V5App({ state }) {
   const { screen, goHome, navigateExtras, navigateSleep, navigateMorning, navigateTools } = state;
   const [activeTab, setActiveTab] = useState('alarms');
+  const [isWireframe, setIsWireframe] = useState(false);
+  const rootRef = useRef(null);
+  const wireframeOriginalTextRef = useRef(new Map());
 
   const TAB_SCREENS = [SCREENS.HOME, SCREENS.TAB_SLEEP, SCREENS.TAB_MORNING, SCREENS.TAB_TOOLS, SCREENS.EXTRAS];
   const showTabBar = TAB_SCREENS.includes(screen);
@@ -2712,8 +2802,83 @@ export default function V5App({ state }) {
     else if (screen === SCREENS.TAB_TOOLS) setActiveTab('tools');
   }, [screen]);
 
+  useEffect(() => {
+    const restoreOriginalText = () => {
+      wireframeOriginalTextRef.current.forEach((original, node) => {
+        if (node && node.nodeValue !== undefined) node.nodeValue = original;
+      });
+      wireframeOriginalTextRef.current.clear();
+    };
+
+    if (!isWireframe) {
+      restoreOriginalText();
+      return undefined;
+    }
+
+    const root = rootRef.current;
+    if (!root) return undefined;
+
+    const sanitizeTextNode = (node) => {
+      const original = node.nodeValue;
+      if (!original) return;
+      const sanitized = sanitizeWireframeText(original);
+      if (sanitized !== original) {
+        if (!wireframeOriginalTextRef.current.has(node)) {
+          wireframeOriginalTextRef.current.set(node, original);
+        }
+        node.nodeValue = sanitized;
+      }
+    };
+
+    const sanitizeTree = (target) => {
+      if (!target) return;
+      if (target.nodeType === Node.TEXT_NODE) {
+        sanitizeTextNode(target);
+        return;
+      }
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+      let current = walker.nextNode();
+      while (current) {
+        sanitizeTextNode(current);
+        current = walker.nextNode();
+      }
+    };
+
+    sanitizeTree(root);
+
+    const observer = new MutationObserver((records) => {
+      records.forEach((record) => {
+        if (record.type === 'characterData') {
+          sanitizeTree(record.target);
+          return;
+        }
+        record.addedNodes.forEach((node) => sanitizeTree(node));
+      });
+    });
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      observer.disconnect();
+      restoreOriginalText();
+    };
+  }, [isWireframe]);
+
   return (
-    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div
+      ref={rootRef}
+      className={isWireframe ? WIREFRAME_CLASS : ''}
+      style={{
+        height: '100%',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        background: isWireframe ? '#f7f7f7' : undefined,
+        filter: isWireframe ? 'grayscale(1)' : undefined,
+      }}
+    >
+      <style>{WIREFRAME_CSS}</style>
+      <VisualModeSwitch isWireframe={isWireframe} onModeChange={setIsWireframe} />
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         <AnimatePresence mode="wait">
           {screen === SCREENS.HOME && <HomeScreen key="home" state={state} />}

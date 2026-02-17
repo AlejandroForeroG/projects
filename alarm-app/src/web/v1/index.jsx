@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import t from '../theme.js';
 import {
@@ -26,6 +26,50 @@ const pageTransition = {
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ALL_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const WIREFRAME_CLASS = 'web-v1-wireframe-mode';
+const WIREFRAME_CSS = `
+  .${WIREFRAME_CLASS},
+  .${WIREFRAME_CLASS} * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
+  }
+
+  .${WIREFRAME_CLASS} * {
+    color: #3f3f3f !important;
+    border-color: #949494 !important;
+  }
+
+  .${WIREFRAME_CLASS} div,
+  .${WIREFRAME_CLASS} section,
+  .${WIREFRAME_CLASS} article,
+  .${WIREFRAME_CLASS} aside,
+  .${WIREFRAME_CLASS} nav,
+  .${WIREFRAME_CLASS} header,
+  .${WIREFRAME_CLASS} footer,
+  .${WIREFRAME_CLASS} main {
+    background-color: #f4f4f4 !important;
+  }
+
+  .${WIREFRAME_CLASS} button,
+  .${WIREFRAME_CLASS} input,
+  .${WIREFRAME_CLASS} textarea,
+  .${WIREFRAME_CLASS} select,
+  .${WIREFRAME_CLASS} [role='button'],
+  .${WIREFRAME_CLASS} [role='switch'] {
+    background: #ebebeb !important;
+  }
+
+  .${WIREFRAME_CLASS} img,
+  .${WIREFRAME_CLASS} svg {
+    filter: grayscale(1) !important;
+  }
+`;
+const WIREFRAME_ICON_REGEX = /[\p{Extended_Pictographic}\u2600-\u27BF\uFE0E\uFE0F]/gu;
+
+function sanitizeWireframeText(value) {
+  return value.replace(WIREFRAME_ICON_REGEX, '').replace(/\s{2,}/g, ' ');
+}
 
 function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
@@ -98,6 +142,49 @@ function generatePendingTasks() {
 }
 
 /* ───────── Shared UI Components ───────── */
+
+function VisualModeSwitch({ isWireframe, onModeChange }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      zIndex: 1200,
+      display: 'flex',
+      gap: '4px',
+      border: '2px solid #7f7f7f',
+      borderRadius: '999px',
+      padding: '3px',
+      background: '#f0f0f0',
+      fontFamily: t.fonts.display,
+    }}>
+      {[
+        { id: 'visual', label: 'Visual' },
+        { id: 'wireframe', label: 'Wireframe' },
+      ].map((mode) => {
+        const active = (mode.id === 'wireframe') === isWireframe;
+        return (
+          <button
+            key={mode.id}
+            onClick={() => onModeChange(mode.id === 'wireframe')}
+            style={{
+              border: '1px solid #8a8a8a',
+              borderRadius: '999px',
+              background: active ? '#d7d7d7' : '#f8f8f8',
+              color: '#333',
+              fontSize: '12px',
+              fontWeight: 700,
+              padding: '6px 12px',
+              cursor: 'pointer',
+            }}
+          >
+            {mode.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function ChunkyButton({ children, onClick, variant = 'primary', color, style: extra = {} }) {
   const variants = {
@@ -1394,11 +1481,90 @@ function Sidebar({ activeSection, onNavigate, profileName }) {
 export default function WebV1ClassicSidebar({ state }) {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [cloud] = useState(() => getCloudStore());
+  const [isWireframe, setIsWireframe] = useState(false);
+  const rootRef = useRef(null);
+  const wireframeOriginalTextRef = useRef(new Map());
+
+  useEffect(() => {
+    const restoreOriginalText = () => {
+      wireframeOriginalTextRef.current.forEach((original, node) => {
+        if (node && node.nodeValue !== undefined) node.nodeValue = original;
+      });
+      wireframeOriginalTextRef.current.clear();
+    };
+
+    if (!isWireframe) {
+      restoreOriginalText();
+      return undefined;
+    }
+
+    const root = rootRef.current;
+    if (!root) return undefined;
+
+    const sanitizeTextNode = (node) => {
+      const original = node.nodeValue;
+      if (!original) return;
+      const sanitized = sanitizeWireframeText(original);
+      if (sanitized !== original) {
+        if (!wireframeOriginalTextRef.current.has(node)) {
+          wireframeOriginalTextRef.current.set(node, original);
+        }
+        node.nodeValue = sanitized;
+      }
+    };
+
+    const sanitizeTree = (target) => {
+      if (!target) return;
+      if (target.nodeType === Node.TEXT_NODE) {
+        sanitizeTextNode(target);
+        return;
+      }
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+      let current = walker.nextNode();
+      while (current) {
+        sanitizeTextNode(current);
+        current = walker.nextNode();
+      }
+    };
+
+    sanitizeTree(root);
+
+    const observer = new MutationObserver((records) => {
+      records.forEach((record) => {
+        if (record.type === 'characterData') {
+          sanitizeTree(record.target);
+          return;
+        }
+        record.addedNodes.forEach((node) => sanitizeTree(node));
+      });
+    });
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      observer.disconnect();
+      restoreOriginalText();
+    };
+  }, [isWireframe]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', background: t.colors.bg, fontFamily: t.fonts.body, overflow: 'hidden' }}>
+    <div
+      ref={rootRef}
+      className={isWireframe ? WIREFRAME_CLASS : ''}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        background: isWireframe ? '#f6f6f6' : t.colors.bg,
+        fontFamily: t.fonts.body,
+        overflow: 'hidden',
+        position: 'relative',
+        filter: isWireframe ? 'grayscale(1)' : undefined,
+      }}
+    >
+      <style>{WIREFRAME_CSS}</style>
+      <VisualModeSwitch isWireframe={isWireframe} onModeChange={setIsWireframe} />
       <Sidebar activeSection={activeSection} onNavigate={setActiveSection} profileName={cloud.profile.name} />
-      <div style={{ flex: 1, height: '100%', overflow: 'hidden', position: 'relative', background: t.colors.bg }}>
+      <div style={{ flex: 1, height: '100%', overflow: 'hidden', position: 'relative', background: isWireframe ? '#f4f4f4' : t.colors.bg }}>
         <AnimatePresence mode="wait">
           {activeSection === 'dashboard' && <WellbeingScreen key="dashboard" state={state} onNavigate={setActiveSection} />}
           {activeSection === 'calendar' && <CalendarScreen key="calendar" state={state} />}
