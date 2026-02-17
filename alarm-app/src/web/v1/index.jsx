@@ -67,6 +67,25 @@ function generateWellbeingData(snoozeHistory, alarms) {
   return { sleepScore, totalSnoozes7, totalSnoozes30, avgSnoozeTime7, consistencyPercent, daysWithNoSnooze7, enabledAlarms, streakDays: daysWithNoSnooze7, last7, last30 };
 }
 
+function generatePhoneUsageData() {
+  const entries = [];
+  const now = new Date();
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    const hadPhoneUsage = Math.random() > 0.5; // 50% chance de uso de celular
+    const baseSnoozes = Math.floor(Math.random() * 2) + 1; // 1-2 snoozes base
+    const snoozeCount = hadPhoneUsage ? baseSnoozes + Math.floor(Math.random() * 3) + 1 : baseSnoozes; // más snoozes si usó celular
+    entries.push({
+      id: `phone-${i}`,
+      date: new Date(date),
+      hadPhoneUsage,
+      snoozeCount,
+    });
+  }
+  return entries.reverse(); // Más reciente al final
+}
+
 function generatePendingTasks() {
   return [
     { id: 'pt1', title: 'Review quarterly report', urgency: 'critical', status: 'pending', dueDate: '2026-02-07', alarm: '08:00' },
@@ -203,8 +222,16 @@ function AlarmModal({ alarm, onClose, onSave, onDelete, onUpdate }) {
 function WellbeingScreen({ state, onNavigate }) {
   const snoozeHistory = useMemo(() => generateSnoozeHistory(), []);
   const wellbeing = useMemo(() => generateWellbeingData(snoozeHistory, state.alarms), [snoozeHistory, state.alarms]);
+  const phoneData = useMemo(() => generatePhoneUsageData(), []);
   const scoreColor = wellbeing.sleepScore >= 70 ? t.colors.teal : wellbeing.sleepScore >= 40 ? t.colors.yellow : t.colors.accent;
   const scoreLabel = wellbeing.sleepScore >= 70 ? 'Great' : wellbeing.sleepScore >= 40 ? 'Fair' : 'Needs Work';
+
+  // Calcular estadísticas de uso de celular
+  const phoneUsageDays = phoneData.filter(d => d.hadPhoneUsage).length;
+  const avgSnoozesWithPhone = phoneData.filter(d => d.hadPhoneUsage).reduce((sum, d) => sum + d.snoozeCount, 0) / phoneUsageDays || 0;
+  const avgSnoozesWithoutPhone = phoneData.filter(d => !d.hadPhoneUsage).reduce((sum, d) => sum + d.snoozeCount, 0) / (phoneData.length - phoneUsageDays) || 0;
+  const maxSnoozes = Math.max(...phoneData.map(d => d.snoozeCount));
+  const chartData = phoneData.slice(-7); // Últimos 7 días
 
   return (
     <motion.div {...pageTransition} style={{ height: '100%', overflowY: 'auto', padding: t.spacing.lg }}>
@@ -230,6 +257,117 @@ function WellbeingScreen({ state, onNavigate }) {
         <StatCard label="Consistency" value={wellbeing.consistencyPercent+'%'} color={t.colors.teal} bg={t.colors.tealLight} />
         <StatCard label="Clean Days" value={wellbeing.streakDays} color={t.colors.yellow} bg={t.colors.yellowLight} />
       </div>
+      
+      {/* ━━━ GRÁFICA: Celular Nocturno vs Snoozes ━━━ */}
+      <Card style={{ marginBottom: t.spacing.md }}>
+        <div style={{ fontFamily: t.fonts.display, fontSize: '18px', fontWeight: 800, color: t.colors.text, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '24px' }}>📱</span>
+          Celular Nocturno vs. Snoozes Matutinos
+        </div>
+        <div style={{ fontFamily: t.fonts.body, fontSize: '13px', color: t.colors.textSecondary, marginBottom: t.spacing.md }}>
+          Evidencia del impacto de las pantallas antes de dormir en tus hábitos de snooze
+        </div>
+        
+        {/* Gráfica de barras */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '200px', marginBottom: t.spacing.md, padding: `${t.spacing.sm} 0` }}>
+          {chartData.map((entry, i) => {
+            const pct = (entry.snoozeCount / maxSnoozes) * 100;
+            const barColor = entry.hadPhoneUsage ? t.colors.accent : t.colors.teal;
+            const barBg = entry.hadPhoneUsage ? t.colors.accentLight : t.colors.tealLight;
+            
+            return (
+              <div key={entry.id} style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                height: '100%', 
+                justifyContent: 'flex-end',
+                gap: '6px',
+              }}>
+                {/* Icono de celular */}
+                <div style={{ height: '20px', fontSize: '14px', opacity: entry.hadPhoneUsage ? 1 : 0 }}>
+                  📱
+                </div>
+                
+                {/* Cantidad de snoozes */}
+                <div style={{ 
+                  fontFamily: t.fonts.display, 
+                  fontWeight: 700, 
+                  fontSize: '13px', 
+                  color: t.colors.text,
+                }}>
+                  {entry.snoozeCount}
+                </div>
+                
+                {/* Barra animada */}
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${pct}%` }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.1 + i * 0.05 }}
+                  style={{
+                    width: '100%',
+                    background: barColor,
+                    borderRadius: `${t.radii.xs} ${t.radii.xs} 0 0`,
+                    border: t.chunkyBorder,
+                    borderBottom: 'none',
+                    minHeight: 8,
+                    position: 'relative',
+                  }}
+                >
+                  {entry.hadPhoneUsage && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: `repeating-linear-gradient(45deg, transparent, transparent 4px, ${barBg} 4px, ${barBg} 8px)`,
+                      borderRadius: `${t.radii.xs} ${t.radii.xs} 0 0`,
+                    }} />
+                  )}
+                </motion.div>
+                
+                {/* Día de la semana */}
+                <div style={{
+                  fontFamily: t.fonts.body,
+                  fontSize: '11px',
+                  color: t.colors.textMuted,
+                  fontWeight: 600,
+                }}>
+                  {DAY_LABELS[entry.date.getDay()]}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Leyenda y estadísticas */}
+        <div style={{ 
+          display: 'flex', 
+          gap: t.spacing.md, 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: t.spacing.sm,
+          borderTop: `2px solid ${t.colors.border}`,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ display: 'flex', gap: t.spacing.md, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: t.fonts.body, fontSize: '13px', color: t.colors.text, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: t.colors.accent, fontWeight: 700, fontSize: '18px' }}>■</span> 
+              Con celular: <strong>{avgSnoozesWithPhone.toFixed(1)}</strong> snoozes
+            </div>
+            <div style={{ fontFamily: t.fonts.body, fontSize: '13px', color: t.colors.text, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: t.colors.teal, fontWeight: 700, fontSize: '18px' }}>■</span> 
+              Sin celular: <strong>{avgSnoozesWithoutPhone.toFixed(1)}</strong> snoozes
+            </div>
+          </div>
+          <Badge color={t.colors.accent}>
+            📱 {phoneUsageDays} días con celular
+          </Badge>
+        </div>
+      </Card>
+      
       <Card>
         <div style={{ fontFamily: t.fonts.display, fontSize: '16px', fontWeight: 800, color: t.colors.text, marginBottom: t.spacing.sm }}>Quick Links</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
@@ -748,6 +886,57 @@ function CloudBackupScreen() {
   );
 }
 
+/* ───────── Files Screen ───────── */
+
+function FilesScreen() {
+  const [cloud] = useState(() => getCloudStore());
+
+  return (
+    <motion.div {...pageTransition} style={{ height: '100%', overflowY: 'auto', padding: t.spacing.lg }}>
+      <PageHeader title="Files & Data" subtitle="Access and manage your sleep data files" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: t.spacing.sm, marginBottom: t.spacing.md }}>
+        <StatCard label="Total Storage" value={cloud.backupStatus.size} color={t.colors.teal} bg={t.colors.tealLight} />
+        <StatCard label="Files" value="12" color={t.colors.purple} bg={t.colors.purpleLight} />
+        <StatCard label="Last Updated" value={new Date(cloud.backupStatus.lastBackup).toLocaleDateString()} color={t.colors.accent} bg={t.colors.accentLight+'30'} />
+      </div>
+      <Card>
+        <div style={{ fontFamily: t.fonts.display, fontSize: '15px', fontWeight: 800, color: t.colors.text, marginBottom: t.spacing.sm }}>Data Files</div>
+        {[
+          { label: 'Alarms & Settings', size: '0.8 MB', type: 'JSON', date: '2026-02-08' },
+          { label: 'Sleep History', size: '1.2 MB', type: 'CSV', date: '2026-02-08' },
+          { label: 'Post-its & Notes', size: '0.4 MB', type: 'TXT', date: '2026-02-07' },
+          { label: 'Snooze Analytics', size: '0.6 MB', type: 'JSON', date: '2026-02-06' },
+        ].map(item => (
+          <div key={item.label} style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            padding: '12px 0', 
+            borderBottom: `1px solid ${t.colors.border}` 
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: t.radii.sm,
+              background: t.colors.tealLight,
+              border: t.chunkyBorder,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+            }}>📄</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: t.fonts.body, fontSize: '14px', fontWeight: 600, color: t.colors.text }}>{item.label}</div>
+              <div style={{ fontFamily: t.fonts.body, fontSize: '12px', color: t.colors.textMuted }}>{item.type} • {item.size} • {item.date}</div>
+            </div>
+            <ChunkyButton variant="ghost" style={{ padding: '6px 16px', fontSize: '12px' }}>Download</ChunkyButton>
+          </div>
+        ))}
+      </Card>
+    </motion.div>
+  );
+}
+
 /* ───────── W16: Dark Mode ───────── */
 
 function DarkModeScreen() {
@@ -1108,30 +1297,12 @@ const NAV_SECTIONS = [
   { type: 'item', id: 'bedtime', label: 'Bedtime', icon: '☾' },
   { type: 'item', id: 'snooze', label: 'Snooze Patterns', icon: 'Zz' },
   { type: 'item', id: 'compliance', label: 'Compliance', icon: '✓' },
-  { type: 'header', label: 'TOOLS' },
-  { type: 'item', id: 'rules', label: 'Rules', icon: '⚡' },
-  { type: 'item', id: 'postit', label: 'Post-it Editor', icon: '📝' },
-  { type: 'item', id: 'suggestions', label: 'Suggestions', icon: '✦' },
-  { type: 'item', id: 'automation', label: 'Home Automation', icon: '💡' },
-  { type: 'header', label: 'TASKS' },
-  { type: 'item', id: 'critical', label: 'Critical Panel', icon: '!!' },
-  { type: 'item', id: 'pending', label: 'Pending History', icon: '☰' },
-  { type: 'header', label: 'DATA' },
-  { type: 'item', id: 'import', label: 'Import Routines', icon: '↑' },
-  { type: 'item', id: 'export', label: 'Export CSV', icon: '↓' },
-  { type: 'item', id: 'backups', label: 'Backups', icon: '◎' },
-  { type: 'header', label: 'SETTINGS' },
-  { type: 'item', id: 'sync', label: 'Sync', icon: '⟳' },
-  { type: 'item', id: 'cloud', label: 'Cloud Backup', icon: '☁' },
-  { type: 'item', id: 'darkmode', label: 'Dark Mode', icon: '◐' },
+  { type: 'item', id: 'files', label: 'Files', icon: '📁' },
 ];
 
 const iconColorMap = {
   dashboard: t.colors.yellow, calendar: t.colors.accent, snooze: t.colors.teal, compliance: t.colors.purple,
-  critical: t.colors.accentDark, pending: t.colors.yellow, import: t.colors.teal, export: t.colors.teal,
-  backups: t.colors.purple, profile: t.colors.accent, sync: t.colors.teal, cloud: t.colors.purple,
-  darkmode: t.colors.text, bedtime: t.colors.purple, rules: t.colors.yellow, postit: t.colors.accent,
-  suggestions: t.colors.teal, automation: t.colors.yellow,
+  bedtime: t.colors.purple, files: t.colors.teal,
 };
 
 function Sidebar({ activeSection, onNavigate, profileName }) {
@@ -1233,20 +1404,9 @@ export default function WebV1ClassicSidebar({ state }) {
           {activeSection === 'calendar' && <CalendarScreen key="calendar" state={state} />}
           {activeSection === 'snooze' && <SnoozeHistoryScreen key="snooze" />}
           {activeSection === 'compliance' && <ComplianceScreen key="compliance" />}
-          {activeSection === 'critical' && <CriticalPanelScreen key="critical" />}
-          {activeSection === 'pending' && <PendingScreen key="pending" />}
-          {activeSection === 'import' && <ImportRoutinesScreen key="import" />}
-          {activeSection === 'export' && <ExportCSVScreen key="export" />}
-          {activeSection === 'backups' && <BackupsScreen key="backups" />}
-          {activeSection === 'profile' && <ProfileScreen key="profile" />}
-          {activeSection === 'sync' && <SyncScreen key="sync" />}
-          {activeSection === 'cloud' && <CloudBackupScreen key="cloud" />}
-          {activeSection === 'darkmode' && <DarkModeScreen key="darkmode" />}
           {activeSection === 'bedtime' && <SettingsScreen key="bedtime" state={state} />}
-          {activeSection === 'rules' && <RulesScreen key="rules" />}
-          {activeSection === 'postit' && <PostItEditorScreen key="postit" />}
-          {activeSection === 'suggestions' && <SuggestionsScreen key="suggestions" />}
-          {activeSection === 'automation' && <HomeAutomationScreen key="automation" />}
+          {activeSection === 'files' && <FilesScreen key="files" />}
+          {activeSection === 'profile' && <ProfileScreen key="profile" />}
         </AnimatePresence>
       </div>
     </div>

@@ -591,7 +591,7 @@ function MorningTabScreen({ state }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <FeatureCard
             icon="☀️"
-            title="Buenos Días"
+            title="Hola"
             subtitle={activeCount > 0 ? `${activeCount} item${activeCount > 1 ? 's' : ''} configured` : 'Set up your wake-up screen'}
             color={t.colors.yellow}
             onClick={() => navigate(SCREENS.GOOD_MORNING_SETTINGS)}
@@ -1966,7 +1966,7 @@ function FeedbackScreen({ state }) {
   );
 }
 
-/* ───────── Good Morning Screen (Buenos Días) ───────── */
+/* ───────── Good Morning Screen (Hola) ───────── */
 
 function GoodMorningScreen({ state }) {
   const { goHome, briefingEnabled, briefingSources, goodMorningActions, ringingAlarm } = state;
@@ -2066,7 +2066,7 @@ function GoodMorningScreen({ state }) {
             margin: '0 0 2px',
             lineHeight: 1.1,
           }}>
-            Buenos días
+            Hola
           </h1>
           <div style={{
             fontFamily: t.fonts.body,

@@ -16,6 +16,24 @@ export function generateSnoozeHistory() {
   return entries;
 }
 
+export function generatePhoneUsageData() {
+  const data = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const hadPhoneUsage = Math.random() > 0.3; // 70% de probabilidad de usar celular
+    const snoozeCount = hadPhoneUsage 
+      ? Math.floor(Math.random() * 5) + 2  // Más snoozes si usó celular
+      : Math.floor(Math.random() * 2);     // Menos snoozes sin celular
+    data.push({
+      date: d,
+      hadPhoneUsage,
+      snoozeCount,
+    });
+  }
+  return data.reverse();
+}
+
 export function generateWellbeingData() {
   return {
     score: Math.floor(Math.random() * 30) + 70,

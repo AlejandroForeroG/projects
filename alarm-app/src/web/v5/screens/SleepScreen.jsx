@@ -6,7 +6,7 @@ import { tileHeader, bodyText } from '../styles.js';
 import { generateSnoozeHistory } from '../utils/data.js';
 import { DecoShape, Tile } from '../components/index.js';
 
-export default function SnoozeScreen() {
+export default function SleepScreen() {
   const [snoozeData] = useState(generateSnoozeHistory);
   const [filter, setFilter] = useState('All');
   const maxMinutes = Math.max(...snoozeData.map(s => s.totalMinutes));

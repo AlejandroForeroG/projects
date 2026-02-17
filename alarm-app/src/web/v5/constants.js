@@ -17,8 +17,8 @@ export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
 export const NAV_ITEMS = [
-  { key: 'calendar', label: 'Schedule', emoji: '📅' },
-  { key: 'snooze', label: 'Snooze', emoji: '😴' },
-  { key: 'wellbeing', label: 'Wellbeing', emoji: '🌟' },
-  { key: 'settings', label: 'Bedtime', emoji: '🛏️' },
+  { key: 'sleep', label: 'Sleep', emoji: '😴' },
+  { key: 'dashboard', label: 'Dashboard', emoji: '📊' },
+  { key: 'calendar', label: 'Calendar', emoji: '📅' },
+  { key: 'files', label: 'Files', emoji: '📁' },
 ];
