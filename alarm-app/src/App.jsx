@@ -3,7 +3,7 @@ import PhoneFrame from './shared/PhoneFrame';
 import { useAlarmState } from './shared/useAlarmState';
 import mobileRegistry, { versionMeta } from './mobile/registry';
 import webRegistry, { webVersionMeta } from './web/registry';
-import ComponentCatalog from './components/ComponentCatalog';
+import StyleTile from './components/StyleTile';
 
 function LoadingFallback({ isWeb }) {
   return (
@@ -80,7 +80,7 @@ function ViewSelector({ view, onViewChange }) {
       border: '2px solid #1A2B3C',
       boxShadow: '3px 3px 0px #1A2B3C',
     }}>
-      {['flows', 'components'].map((v) => (
+      {['flows', 'styletile'].map((v) => (
         <button
           key={v}
           onClick={() => onViewChange(v)}
@@ -99,7 +99,7 @@ function ViewSelector({ view, onViewChange }) {
             letterSpacing: '0.03em',
           }}
         >
-          {v === 'flows' ? 'Flujos' : 'Componentes'}
+          {v === 'flows' ? 'Flujos' : 'System Design'}
         </button>
       ))}
     </div>
@@ -118,7 +118,7 @@ export default function App() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#ffffff',
+      background: view === 'styletile' ? '#F0F3F6' : '#ffffff',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -129,16 +129,18 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: '24px',
-        paddingTop: '28px',
-        paddingBottom: view === 'components' ? '20px' : (platform === 'web' ? '20px' : '0px'),
+        paddingTop: '16px',
+        paddingBottom: view === 'styletile' ? '16px' : (platform === 'web' ? '20px' : '0px'),
         flexWrap: 'wrap',
       }}>
         <ViewSelector view={view} onViewChange={setView} />
         <PlatformSelector platform={platform} onPlatformChange={setPlatform} />
       </div>
 
-      {view === 'components' && (
-        <ComponentCatalog />
+      {view === 'styletile' && (
+        <div style={{ width: '100%', padding: '0 24px 24px', boxSizing: 'border-box' }}>
+          <StyleTile />
+        </div>
       )}
 
       {/* ─── Flows: Mobile mode ─── */}

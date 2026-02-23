@@ -976,49 +976,81 @@ function CloudBackupScreen() {
 /* ───────── Files Screen ───────── */
 
 function FilesScreen() {
-  const [cloud] = useState(() => getCloudStore());
+  const [cloud, setCloud] = useState(() => getCloudStore());
+  const [exported, setExported] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState(false);
+  const [backing, setBacking] = useState(false);
+
+  const handleExport = () => { setExported(true); setTimeout(() => setExported(false), 2000); };
+  
+  const handleImport = () => {
+    setImporting(true);
+    setTimeout(() => {
+      const updated = updateCloudStore({
+        backupStatus: { ...cloud.backupStatus, size: '2.8 MB' }
+      });
+      setCloud(updated);
+      setImporting(false);
+      setImported(true);
+      setTimeout(() => setImported(false), 2000);
+    }, 1500);
+  };
+
+  const backupNow = () => {
+    setBacking(true);
+    setTimeout(() => {
+      const updated = updateCloudStore({ backupStatus: { ...cloud.backupStatus, lastBackup: new Date().toISOString(), size: '3.0 MB' } });
+      setCloud(updated);
+      setBacking(false);
+    }, 2000);
+  };
 
   return (
     <motion.div {...pageTransition} style={{ height: '100%', overflowY: 'auto', padding: t.spacing.lg }}>
-      <PageHeader title="Files & Data" subtitle="Access and manage your sleep data files" />
+      <PageHeader title="Files & Data" subtitle="Manage backups, import, and export your data" />
+      
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: t.spacing.sm, marginBottom: t.spacing.md }}>
         <StatCard label="Total Storage" value={cloud.backupStatus.size} color={t.colors.teal} bg={t.colors.tealLight} />
         <StatCard label="Files" value="12" color={t.colors.purple} bg={t.colors.purpleLight} />
         <StatCard label="Last Updated" value={new Date(cloud.backupStatus.lastBackup).toLocaleDateString()} color={t.colors.accent} bg={t.colors.accentLight+'30'} />
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: t.spacing.md, marginBottom: t.spacing.md }}>
+        <Card>
+          <div style={{ fontFamily: t.fonts.display, fontSize: '16px', fontWeight: 800, color: t.colors.text, marginBottom: '8px' }}>📤 Import Data</div>
+          <div style={{ fontFamily: t.fonts.body, fontSize: '13px', color: t.colors.textSecondary, marginBottom: '16px' }}>Restore data from a previous export or add new routine templates.</div>
+          <ChunkyButton onClick={handleImport} color={t.colors.accent} style={{ width: '100%', padding: '10px' }}>
+            {importing ? 'Importing...' : imported ? '✓ Imported!' : 'Import File'}
+          </ChunkyButton>
+        </Card>
+
+        <Card>
+          <div style={{ fontFamily: t.fonts.display, fontSize: '16px', fontWeight: 800, color: t.colors.text, marginBottom: '8px' }}>📥 Export Data</div>
+          <div style={{ fontFamily: t.fonts.body, fontSize: '13px', color: t.colors.textSecondary, marginBottom: '16px' }}>Download your sleep records and alarms as a CSV file for your own records.</div>
+          <ChunkyButton onClick={handleExport} color={t.colors.purple} style={{ width: '100%', padding: '10px' }}>
+            {exported ? '✓ Downloaded!' : 'Export CSV'}
+          </ChunkyButton>
+        </Card>
+      </div>
+
       <Card>
-        <div style={{ fontFamily: t.fonts.display, fontSize: '15px', fontWeight: 800, color: t.colors.text, marginBottom: t.spacing.sm }}>Data Files</div>
-        {[
-          { label: 'Alarms & Settings', size: '0.8 MB', type: 'JSON', date: '2026-02-08' },
-          { label: 'Sleep History', size: '1.2 MB', type: 'CSV', date: '2026-02-08' },
-          { label: 'Post-its & Notes', size: '0.4 MB', type: 'TXT', date: '2026-02-07' },
-          { label: 'Snooze Analytics', size: '0.6 MB', type: 'JSON', date: '2026-02-06' },
-        ].map(item => (
-          <div key={item.label} style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '12px', 
-            padding: '12px 0', 
-            borderBottom: `1px solid ${t.colors.border}` 
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: t.radii.sm,
-              background: t.colors.tealLight,
-              border: t.chunkyBorder,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-            }}>📄</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: t.fonts.body, fontSize: '14px', fontWeight: 600, color: t.colors.text }}>{item.label}</div>
-              <div style={{ fontFamily: t.fonts.body, fontSize: '12px', color: t.colors.textMuted }}>{item.type} • {item.size} • {item.date}</div>
-            </div>
-            <ChunkyButton variant="ghost" style={{ padding: '6px 16px', fontSize: '12px' }}>Download</ChunkyButton>
+        <div style={{ fontFamily: t.fonts.display, fontSize: '16px', fontWeight: 800, color: t.colors.text, marginBottom: '12px' }}>🔄 Routine Backups</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.spacing.sm }}>
+          <div>
+            <div style={{ fontFamily: t.fonts.display, fontSize: '14px', fontWeight: 700, color: t.colors.text }}>Auto Backup</div>
+            <div style={{ fontFamily: t.fonts.body, fontSize: '12px', color: t.colors.textSecondary }}>Securely store data in the cloud automatically.</div>
           </div>
-        ))}
+          <Toggle enabled={cloud.backupStatus.autoEnabled} onToggle={() => { const u = updateCloudStore({ backupStatus: { ...cloud.backupStatus, autoEnabled: !cloud.backupStatus.autoEnabled } }); setCloud(u); }} />
+        </div>
+        <div style={{ display: 'flex', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${t.colors.border}` }}>
+          <ChunkyButton onClick={backupNow} color={t.colors.teal} style={{ flex: 1, padding: '10px' }}>
+            {backing ? 'Backing up...' : 'Backup Now'}
+          </ChunkyButton>
+          <ChunkyButton variant="ghost" onClick={() => {}} style={{ flex: 1, padding: '10px' }}>
+            Manage Storage
+          </ChunkyButton>
+        </div>
       </Card>
     </motion.div>
   );
