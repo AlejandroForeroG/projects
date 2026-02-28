@@ -1,9 +1,12 @@
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import PhoneFrame from './shared/PhoneFrame';
 import { useAlarmState } from './shared/useAlarmState';
 import mobileRegistry, { versionMeta } from './mobile/registry';
 import webRegistry, { webVersionMeta } from './web/registry';
 import StyleTile from './components/StyleTile';
+import { isAuthenticated } from './shared/authStore';
+import { LoginScreen as WebLoginScreen, RegisterScreen as WebRegisterScreen, CodeVerificationScreen as WebCodeScreen } from './web/v5/auth';
+import { LoginScreen as MobileLoginScreen, RegisterScreen as MobileRegisterScreen, CodeVerificationScreen as MobileCodeScreen } from './mobile/v5/auth';
 
 function LoadingFallback({ isWeb }) {
   return (
@@ -109,11 +112,41 @@ function ViewSelector({ view, onViewChange }) {
 export default function App() {
   const [platform, setPlatform] = useState('mobile');
   const [view, setView] = useState('flows');
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authScreen, setAuthScreen] = useState('login'); // 'login' | 'register' | 'verify'
+  const [verificationEmail, setVerificationEmail] = useState('');
   const state = useAlarmState();
+
+  // Check authentication on mount
+  useEffect(() => {
+    setAuthenticated(isAuthenticated());
+  }, []);
 
   // Mobile always shows v5 only, Web always shows v1 only
   const MobileComponent = mobileRegistry[5];
   const WebComponent = webRegistry[1];
+
+  // Auth handlers
+  const handleLoginSuccess = () => {
+    setAuthenticated(true);
+  };
+
+  const handleNavigateToRegister = () => {
+    setAuthScreen('register');
+  };
+
+  const handleNavigateToLogin = () => {
+    setAuthScreen('login');
+  };
+
+  const handleNavigateToVerification = (email) => {
+    setVerificationEmail(email);
+    setAuthScreen('verify');
+  };
+
+  const handleVerificationSuccess = () => {
+    setAuthenticated(true);
+  };
 
   return (
     <div style={{
@@ -143,8 +176,91 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── Flows: Mobile mode ─── */}
-      {view === 'flows' && platform === 'mobile' && (
+      {/* ─── Auth Flow (when not authenticated) ─── */}
+      {view === 'flows' && !authenticated && platform === 'mobile' && (
+        <>
+          <PhoneFrame
+            version={5}
+            onVersionChange={() => {}}
+            totalVersions={1}
+            singleVersion
+          >
+            {authScreen === 'login' && (
+              <MobileLoginScreen
+                onNavigateToRegister={handleNavigateToRegister}
+                onNavigateToVerification={handleNavigateToVerification}
+                onLoginSuccess={handleLoginSuccess}
+              />
+            )}
+            {authScreen === 'register' && (
+              <MobileRegisterScreen
+                onNavigateToLogin={handleNavigateToLogin}
+                onNavigateToVerification={handleNavigateToVerification}
+              />
+            )}
+            {authScreen === 'verify' && (
+              <MobileCodeScreen
+                email={verificationEmail}
+                onVerificationSuccess={handleVerificationSuccess}
+                onBack={handleNavigateToLogin}
+              />
+            )}
+          </PhoneFrame>
+
+          <div style={{
+            marginTop: '16px',
+            marginBottom: '32px',
+            textAlign: 'center',
+            fontFamily: "'Sora', system-ui, sans-serif",
+          }}>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#333',
+            }}>
+              Sistema de Autenticación
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: '#999',
+              marginTop: '2px',
+            }}>
+              Login, Registro y Verificación
+            </div>
+          </div>
+        </>
+      )}
+
+      {view === 'flows' && !authenticated && platform === 'web' && (
+        <div style={{
+          width: '100%',
+          minHeight: 'calc(100vh - 100px)',
+        }}>
+          {authScreen === 'login' && (
+            <WebLoginScreen
+              onNavigateToRegister={handleNavigateToRegister}
+              onNavigateToVerification={handleNavigateToVerification}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          )}
+          {authScreen === 'register' && (
+            <WebRegisterScreen
+              onNavigateToLogin={handleNavigateToLogin}
+              onNavigateToVerification={handleNavigateToVerification}
+            />
+          )}
+          {authScreen === 'verify' && (
+            <WebCodeScreen
+              email={verificationEmail}
+              onVerificationSuccess={handleVerificationSuccess}
+              onBack={handleNavigateToLogin}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ─── Flows: Mobile mode (authenticated) ─── */}
+      {view === 'flows' && authenticated && platform === 'mobile' && (
         <>
           <PhoneFrame
             version={5}
@@ -182,8 +298,8 @@ export default function App() {
         </>
       )}
 
-      {/* ─── Flows: Web mode ─── */}
-      {view === 'flows' && platform === 'web' && (
+      {/* ─── Flows: Web mode (authenticated) ─── */}
+      {view === 'flows' && authenticated && platform === 'web' && (
         <div style={{
           width: '100%',
           maxWidth: '1280px',

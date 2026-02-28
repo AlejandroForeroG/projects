@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import theme from './theme';
 import { SCREENS, RINGTONES, ALARM_ACTIONS, PRIORITIES, ALARM_COLORS, GOOD_MORNING_ACTIONS } from '../../shared/useAlarmState';
 import { getCloudStore } from '../../shared/cloudStore';
+import { logout } from '../../shared/authStore';
 
 const fontLink = document.createElement('link');
 fontLink.href = `https://fonts.googleapis.com/css2?family=${theme.googleFonts}&display=swap`;
@@ -718,6 +719,13 @@ function ToolsTabScreen({ state }) {
     navigate,
   } = state;
 
+  const handleLogout = () => {
+    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+      logout();
+      window.location.reload(); // Reload to show login screen
+    }
+  };
+
   return (
     <motion.div {...popIn} style={{
       height: '100%',
@@ -750,6 +758,16 @@ function ToolsTabScreen({ state }) {
             onToggle={() => setSmartSnoozeEnabled(!smartSnoozeEnabled)}
           />
         </div>
+
+        <div style={{ height: '24px' }} />
+
+        {/* Logout button */}
+        <ChunkyButton
+          variant="danger"
+          onClick={handleLogout}
+        >
+          🚪 Cerrar Sesión
+        </ChunkyButton>
 
         <div style={{ height: '20px' }} />
       </div>

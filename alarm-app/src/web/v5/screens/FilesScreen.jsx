@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import t from '../../theme.js';
 import { tileHeader } from '../styles.js';
 import { DecoShape, Tile } from '../components/index.js';
+import { logout } from '../../../shared/authStore.js';
 
 export default function FilesScreen() {
   const files = [
@@ -11,11 +12,18 @@ export default function FilesScreen() {
     { id: 4, name: 'Sleep Data Export.csv', size: '89 KB', date: '2025-12-28', type: 'csv', emoji: '📈' },
   ];
 
+  const handleLogout = () => {
+    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+      logout();
+      window.location.reload(); // Reload to show login screen
+    }
+  };
+
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(4, 1fr)',
-      gridTemplateRows: 'auto auto',
+      gridTemplateRows: 'auto auto auto',
       gap: t.spacing.md,
       width: '100%',
     }}>
@@ -82,7 +90,7 @@ export default function FilesScreen() {
       ))}
 
       {/* Upload tile */}
-      <Tile span="1 / span 2" delay={0.3} style={{ background: t.colors.accentLight, cursor: 'pointer' }}>
+      <Tile span="1 / span 1" delay={0.3} style={{ background: t.colors.accentLight, cursor: 'pointer' }}>
         <DecoShape shape="circle" size={40} color={t.colors.accent} bottom={-10} right={-10} opacity={0.3} />
         <motion.div 
           style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}
@@ -91,13 +99,13 @@ export default function FilesScreen() {
         >
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>⬆️</div>
           <div style={{ fontFamily: t.fonts.display, fontWeight: 700, fontSize: '14px', color: t.colors.accent }}>
-            Upload New File
+            Upload
           </div>
         </motion.div>
       </Tile>
 
       {/* Export tile */}
-      <Tile span="3 / span 2" delay={0.35} style={{ background: t.colors.tealLight, cursor: 'pointer' }}>
+      <Tile span="2 / span 1" delay={0.35} style={{ background: t.colors.tealLight, cursor: 'pointer' }}>
         <DecoShape shape="diamond" size={30} color={t.colors.teal} top={-8} left={-8} opacity={0.4} />
         <motion.div 
           style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}
@@ -106,7 +114,22 @@ export default function FilesScreen() {
         >
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>📤</div>
           <div style={{ fontFamily: t.fonts.display, fontWeight: 700, fontSize: '14px', color: t.colors.teal }}>
-            Export All Data
+            Export
+          </div>
+        </motion.div>
+      </Tile>
+
+      {/* Logout tile */}
+      <Tile span="3 / span 2" delay={0.4} style={{ background: '#FFE5E2', cursor: 'pointer' }} onClick={handleLogout}>
+        <DecoShape shape="circle" size={35} color={t.colors.accent} top={-10} right={-10} opacity={0.4} />
+        <motion.div 
+          style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <div style={{ fontSize: '32px', marginBottom: '8px' }}>🚪</div>
+          <div style={{ fontFamily: t.fonts.display, fontWeight: 700, fontSize: '14px', color: t.colors.accentDark }}>
+            Cerrar Sesión
           </div>
         </motion.div>
       </Tile>

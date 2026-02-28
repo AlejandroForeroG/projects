@@ -108,7 +108,7 @@ function TokensSample({ t }) {
 
       <div style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '2px solid #E0E8EE' }}>
         <div style={{ fontWeight: 800, fontSize: '16px', color: '#1A2B3C', fontFamily: baseFont, marginBottom: '16px' }}>Sombras y Bordes</div>
-        
+
         <div style={{ marginBottom: '16px' }}>
           <div style={{
             height: '60px',
@@ -162,7 +162,6 @@ function TokensSample({ t }) {
 export default function StyleTile() {
   const t = mobileTheme;
 
-  // Group colors by category for better visualization
   const brandColors = ['accent', 'teal', 'yellow', 'purple'].map(k => ({ name: k, hex: t.colors[k] }));
   const neutralColors = ['text', 'textSecondary', 'textMuted', 'border', 'disabled'].map(k => ({ name: k, hex: t.colors[k] }));
   const surfaceColors = ['bg', 'surface', 'surfaceAlt'].map(k => ({ name: k, hex: t.colors[k] }));
@@ -197,11 +196,11 @@ export default function StyleTile() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 2.8fr)', gap: '48px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 3fr)', gap: '48px', alignItems: 'start' }}>
         {/* Columna Izquierda: Style Tile */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
 
-          {/* Colors — todas las categorías en filas horizontales */}
+          {/* Colors */}
           <div>
             <SectionTitle title="Paleta de Colores" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -274,7 +273,6 @@ export default function StyleTile() {
           gap: '24px',
           alignItems: 'stretch',
         }}>
-
           {[
             {
               icon: '🎨',
@@ -355,7 +353,6 @@ export default function StyleTile() {
               </p>
             </div>
           ))}
-
         </div>
       </div>
     </section>
